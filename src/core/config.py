@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     PINECONE_INDEX_NAME: str
 
     GROQ_MODEL:str
+    EMBEDDING_MODEL: str
 
     model_config = SettingsConfigDict(
         env_file=".env",
