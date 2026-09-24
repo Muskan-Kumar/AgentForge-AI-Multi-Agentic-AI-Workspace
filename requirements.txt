@@ -1,0 +1,46 @@
+# LangChain / LangGraph
+langchain
+langchain-core
+langchain-community
+langchain-groq
+langgraph
+langgraph-checkpoint-postgres
+
+# FastAPI
+fastapi
+uvicorn
+python-multipart
+pydantic
+python-dotenv
+
+# RAG / Vector Database
+pinecone
+langchain-pinecone
+langchain-huggingface
+sentence-transformers
+
+# PDF
+pypdf
+pymupdf
+
+# Web Search
+tavily-python
+
+# PPT / Documents
+python-pptx
+python-docx
+
+# Image
+Pillow
+
+# Database / Checkpointer
+psycopg[binary]
+psycopg-pool
+
+# HTTP / API
+requests
+httpx
+aiohttp
+
+# Templates
+jinja2
