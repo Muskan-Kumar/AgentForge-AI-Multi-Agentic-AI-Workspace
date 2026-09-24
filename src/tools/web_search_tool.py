@@ -3,6 +3,8 @@ from tavily import TavilyClient
 
 from src.core.config import settings
 
+
+@tool
 def web_search(query: str)->str:
     """Search the web for current and relevant information."""
 
@@ -20,10 +22,13 @@ def web_search(query: str)->str:
 
     for result in response.get("results",[]):
         results.append(
-            f"Title: {result.get('title','')}\n",
-            f"URL: {result.get('url','')}\n",
+            f"Title: {result.get('title','')}\n"
+            f"URL: {result.get('url','')}\n"
             f"Content: {result.get('content','')}\n"
         )
+
+    if not results:
+        return "No relevant search results were found."
 
     return "\n\n".join(results)
 
