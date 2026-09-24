@@ -1,5 +1,5 @@
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.core.config import settings
 from src.tools.pdf_tool import pdf_tool
@@ -22,7 +22,8 @@ from user-provided documents.
 Core responsibilities:
 
 - Understand user questions about uploaded documents.
-- Retrieve relevant document context using the RAG tool.
+- Use the RAG tool to retrieve relevant document context.
+- Use the PDF tool when direct PDF extraction is required.
 - Use document content as the primary source of truth.
 - Provide grounded answers based on retrieved context.
 - Summarize, explain and extract information from documents.
@@ -31,14 +32,14 @@ Core responsibilities:
 
 Grounding rules:
 
-1. Use the RAG tool when answering questions about document content.
-2. Do not fabricate information that is not supported by the retrieved context.
-3. If the required information cannot be found, clearly state that it was
-   not found in the available documents.
-4. Distinguish document facts from general explanations.
-5. Do not rely on unsupported assumptions.
-6. Preserve important terminology from the source document.
-7. When possible, reference the relevant document or section.
+1. Use the RAG tool when answering questions about indexed documents.
+2. Use the PDF tool when direct PDF extraction is required.
+3. Do not fabricate information that is not supported by the retrieved context.
+4. If required information cannot be found, clearly state that it was not found.
+5. Distinguish document facts from general explanations.
+6. Do not rely on unsupported assumptions.
+7. Preserve important terminology from the source document.
+8. When possible, reference the relevant document or page.
 
 Response guidelines:
 
@@ -55,9 +56,10 @@ Response guidelines:
 pdf_prompt = ChatPromptTemplate.from_messages(
     [
         ('system',PDF_SYSTEM_PROMPT),
-        ('human','{input}')
+        MessagesPlaceholder(variable_name="messages"),
     ]
 )
+
 
 pdf_agent = pdf_prompt | pdf_llm.bind_tools(
     [pdf_tool, rag_tool]

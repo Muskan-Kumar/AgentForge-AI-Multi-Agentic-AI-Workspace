@@ -1,5 +1,5 @@
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.core.config import settings
 from src.tools.web_search_tool import web_search
@@ -58,7 +58,7 @@ Response guidelines:
 search_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", SEARCH_SYSTEM_PROMPT),
-        ("human", "{input}"),
+        MessagesPlaceholder(variable_name="messages")
     ]
 )
 
