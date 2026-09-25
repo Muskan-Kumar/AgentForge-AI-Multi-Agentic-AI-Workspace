@@ -53,33 +53,11 @@ def extract_artifact_path(result: str) -> str:
 ##--- chat node----
 def chat_node(state: AgentState) -> dict:
 
-    messages = state.get("messages", [])
-    memory_context = state.get("memory_context", "")
-
-    memory_message = []
-
-    if memory_context:
-        memory_message = [
-            {
-                "role": "system",
-                "content": (
-                    "Relevant long-term user memory:\n"
-                    + memory_context
-                ),
-            }
-        ]
-
     response = chat_agent.invoke(
         {
-            "messages": (
-                memory_message
-                + messages
-                + [
-                    {
-                        "role": "user",
-                        "content": state.get("user_query", ""),
-                    }
-                ]
+            "messages": build_agent_messages(
+                state,
+                "chat",
             )
         }
     )
@@ -91,7 +69,6 @@ def chat_node(state: AgentState) -> dict:
             state.get("current_agent_index", 0) + 1
         ),
     }
-
 
 ##---coding node-----
 def coding_node(state: AgentState)-> dict:
@@ -221,11 +198,15 @@ def ppt_node(state: AgentState) -> dict:
 def load_long_term_memory(state: AgentState) -> dict:
 
     user_id = state.get("thread_id")
+    user_query = state.get("user_query", "")
 
-    if not user_id:
+    if not user_id or not user_query:
         return {}
 
-    memories = long_term_memory.get_all_memories(user_id)
+    memories = long_term_memory.get_relevant_memories(
+        user_id=user_id,
+        query=user_query,
+    )
 
     if not memories:
         return {}

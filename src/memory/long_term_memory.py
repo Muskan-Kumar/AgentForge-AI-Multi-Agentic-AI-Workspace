@@ -147,11 +147,58 @@ class LongTermMemory:
                 for memory in memories
             }
 
+    def get_relevant_memories(
+        self,
+        user_id: str,
+        query: str,
+    ) -> dict[str, str]:
+
+        if not user_id:
+            raise ValueError("user_id is required")
+
+        if not query:
+            return {}
+
+        memories = self.get_all_memories(user_id)
+
+        if not memories:
+            return {}
+
+        query_words = {
+            word.strip(".,!?").lower()
+            for word in query.split()
+            if len(word.strip(".,!?")) > 2
+        }
+
+        relevant_memories = {}
+
+        for key, value in memories.items():
+
+            memory_text = f"{key} {value}".lower()
+
+            memory_words = {
+                word.strip(".,!?").lower()
+                for word in memory_text.split()
+                if len(word.strip(".,!?")) > 2
+            }
+
+            if query_words.intersection(memory_words):
+                relevant_memories[key] = value
+
+        return relevant_memories
+
+
     def delete_memory(
         self,
         user_id: str,
         memory_key: str,
     ) -> None:
+
+        if not user_id:
+            raise ValueError("user_id is required")
+
+        if not memory_key:
+            raise ValueError("memory_key is required")
 
         with SessionLocal() as session:
 
@@ -161,9 +208,59 @@ class LongTermMemory:
             )
 
             if memory:
-
                 session.delete(memory)
                 session.commit()
 
+
+    def update_memory(
+        self,
+        user_id: str,
+        memory_key: str,
+        memory_value: str,
+    ) -> None:
+
+        if not user_id:
+            raise ValueError("user_id is required")
+
+        if not memory_key:
+            raise ValueError("memory_key is required")
+
+        if not memory_value:
+            raise ValueError("memory_value is required")
+
+        with SessionLocal() as session:
+
+            memory = session.get(
+                AgentMemory,
+                (user_id, memory_key),
+            )
+
+            if not memory:
+                raise ValueError(
+                    f"Memory '{memory_key}' does not exist"
+                )
+
+            memory.memory_value = memory_value
+            memory.updated_at = datetime.now(timezone.utc)
+
+            session.commit()
+
+    def clear_memories(self, user_id: str) -> None:
+
+        if not user_id:
+            raise ValueError("user_id is required")
+
+        with SessionLocal() as session:
+
+            statement = select(AgentMemory).where(
+                AgentMemory.user_id == user_id
+            )
+
+            memories = session.scalars(statement).all()
+
+            for memory in memories:
+                session.delete(memory)
+
+            session.commit()
 
 long_term_memory = LongTermMemory()

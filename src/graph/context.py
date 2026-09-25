@@ -23,6 +23,18 @@ def build_agent_messages(
         HumanMessage(content=user_query)
     ]
 
+    memory_context = state.get("memory_context", "")
+
+    if memory_context:
+        messages.append(
+            HumanMessage(
+                content=(
+                    "Relevant long-term user memory:\n"
+                    + _clip(memory_context, 3000)
+                )
+            )
+        )
+
     if agent_name == "coding":
         if state.get("search_results"):
             messages.append(

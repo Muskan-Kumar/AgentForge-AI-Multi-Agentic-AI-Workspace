@@ -3,7 +3,8 @@ from src.graph.graph import build_graph
 from src.memory.long_term_memory import long_term_memory
 
 
-USER_ID = "integration-test-user"
+USER_ID = "agent-memory-test"
+
 
 with get_checkpointer() as checkpointer:
 
@@ -16,20 +17,21 @@ with get_checkpointer() as checkpointer:
     }
 
     result = agentforge_graph.invoke(
-    {
-        "user_query": "What programming language do I prefer?",
-        "agent_mode": "chat",
-        "thread_id": USER_ID,
-    },
-    config=config,
-)
+        {
+            "user_query": "Give me a simple Java REST API example.",
+            "agent_mode": "coding",
+            "thread_id": USER_ID,
+        },
+        config=config,
+    )
 
-print("\nSecond Response:")
-print(result["final_response"])
+    print("\nFinal Response:")
+    print(result["final_response"])
 
+    print("\nLoaded Relevant Memory:")
+    print(result.get("memory_context", ""))
 
-print("\nLong-Term Memories:")
-
-print(
-    long_term_memory.get_all_memories(USER_ID)
-)
+    print("\nAll Stored Memories:")
+    print(
+        long_term_memory.get_all_memories(USER_ID)
+    )
