@@ -1,4 +1,4 @@
-from typing import TypedDict, Any, Annotated
+from typing import TypedDict, Annotated
 from langgraph.graph.message import add_messages
 
 class AgentState(TypedDict, total=False):
@@ -8,6 +8,7 @@ class AgentState(TypedDict, total=False):
 
     agent_mode: str
     selected_agents: list[str]
+    current_agent_index: int
 
     uploaded_files: list[str]
 
