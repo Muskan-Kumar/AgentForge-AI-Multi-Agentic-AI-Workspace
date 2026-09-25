@@ -5,11 +5,22 @@ from src.agents.coding_agent import coding_agent
 from src.agents.search_agent import search_agent
 from src.agents.pdf_agent import pdf_agent
 from src.agents.image_agent import image_agent
+from src.agents.ppt_agent import ppt_agent
 
+from src.graph.router import (
+    route_agent, 
+    route_search_tools, 
+    route_pdf_tools,
+    route_image_tools,
+    route_ppt_tools,
+)
 
-from src.graph.router import route_agent, route_search_tools, route_pdf_tools, route_image_tools
-
-from src.graph.tool_nodes import search_tool_node,pdf_tool_node, image_tool_node
+from src.graph.tool_nodes import (
+    search_tool_node,
+    pdf_tool_node,
+    image_tool_node,
+    ppt_tool_node,
+)
 
 from src.state.agent_state import AgentState
 
@@ -105,6 +116,25 @@ def image_node(state: AgentState)->dict:
     return result
 
 
+##-----ppt node----
+def ppt_node(state: AgentState)->dict:
+    response = ppt_agent.invoke(
+        {
+            "messages": state.get("messages",[])
+        }
+    )
+
+    result = {
+        "messages": [response]
+    }
+
+    if not response.tool_calls:
+        result["ppt_result"] = response.content
+        result["final_response"] = response.content
+
+    return result
+
+
 
 ## --- graph build ----
 def build_graph():
@@ -118,6 +148,8 @@ def build_graph():
     workflow.add_node("pdf_tools",pdf_tool_node)
     workflow.add_node("image",image_node)
     workflow.add_node("image_tools",image_tool_node)
+    workflow.add_node("ppt",ppt_node)
+    workflow.add_node("ppt_tools",ppt_tool_node)
 
 
     workflow.add_conditional_edges(START, route_agent,{
@@ -126,6 +158,7 @@ def build_graph():
         "search": "search",
         "pdf": "pdf",
         "image": "image",
+        "ppt":"ppt",
     },)
 
 
@@ -149,6 +182,12 @@ def build_graph():
         "end": END,
     },)
     workflow.add_edge("image_tools", "image")
+
+    workflow.add_conditional_edges("ppt",route_ppt_tools,{
+        "tools": "ppt_tools",
+        "end": END,
+    },)
+    workflow.add_edge("ppt_tools", "ppt")
 
 
     return workflow.compile()

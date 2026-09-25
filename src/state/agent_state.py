@@ -16,7 +16,7 @@ class AgentState(TypedDict, total=False):
     search_results: str
     pdf_context: str
     rag_context: str
-
+    ppt_result: str
     ppt_file: str
     image_file: str
 

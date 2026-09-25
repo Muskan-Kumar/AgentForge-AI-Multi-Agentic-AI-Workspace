@@ -10,6 +10,7 @@ AgentRoute = Literal[
     "search",
     "pdf",
     "image",
+    "ppt",
 ]
 
 
@@ -19,6 +20,7 @@ SUPPORTED_AGENTS: set[str] = {
     "search",
     "pdf",
     "image",
+    "ppt",
 }
 
 
@@ -94,6 +96,20 @@ def route_pdf_tools(state: AgentState) -> str:
 
 
 def route_image_tools(state: AgentState)-> str:
+    messages = state.get("messages",[])
+
+    if not messages:
+        return "end"
+
+    last_messages = messages[-1]
+
+    if isinstance(last_messages, AIMessage) and last_messages.tool_calls:
+        return "tools"
+
+    return "end"
+
+
+def route_ppt_tools(state: AgentState)->str:
     messages = state.get("messages",[])
 
     if not messages:
