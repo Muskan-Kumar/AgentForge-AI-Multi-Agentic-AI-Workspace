@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     GROQ_MODEL:str
     EMBEDDING_MODEL: str
 
+    HF_TOKEN:str
+    IMAGE_MODEL:str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

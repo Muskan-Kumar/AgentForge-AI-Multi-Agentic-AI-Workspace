@@ -4,10 +4,12 @@ from src.agents.chat_agent import chat_agent
 from src.agents.coding_agent import coding_agent
 from src.agents.search_agent import search_agent
 from src.agents.pdf_agent import pdf_agent
+from src.agents.image_agent import image_agent
 
-from src.graph.router import route_agent, route_search_tools, route_pdf_tools
 
-from src.graph.tool_nodes import search_tool_node,pdf_tool_node
+from src.graph.router import route_agent, route_search_tools, route_pdf_tools, route_image_tools
+
+from src.graph.tool_nodes import search_tool_node,pdf_tool_node, image_tool_node
 
 from src.state.agent_state import AgentState
 
@@ -23,8 +25,8 @@ def chat_node(state: AgentState)->dict:
     )
 
     return {
-        "message": [response],
-        "chat_results": response.content,
+        "messages": [response],
+        "chat_result": response.content,
         "final_response": response.content,
     }
 
@@ -38,15 +40,15 @@ def coding_node(state: AgentState)-> dict:
     )
 
     return {
-        "message":[response],
-        "coding_results":response.content,
+        "messages":[response],
+        "coding_result":response.content,
         "final_response":response.content,
     }
 
 
 
 ##---search node----
-def serch_node(state: AgentState)->dict:
+def search_node(state: AgentState)->dict:
     response = search_agent.invoke(
         {
             "messages": state.get("messages",[])
@@ -84,6 +86,25 @@ def pdf_node(state: AgentState)->dict:
 
 
 
+##----- image node-----
+def image_node(state: AgentState)->dict:
+    response = image_agent.invoke(
+        {
+            "messages": state.get("messages",[])
+        }
+    )
+
+    result = {
+        "messages": [response]
+    }
+
+    if not response.tool_calls:
+        result["image_file"] = response.content
+        result["final_response"] = response.content
+
+    return result
+
+
 
 ## --- graph build ----
 def build_graph():
@@ -91,10 +112,12 @@ def build_graph():
 
     workflow.add_node("chat", chat_node)
     workflow.add_node("coding", coding_node)
-    workflow.add_node("search", serch_node)
+    workflow.add_node("search", search_node)
     workflow.add_node("search_tools",search_tool_node)
     workflow.add_node("pdf",pdf_node)
     workflow.add_node("pdf_tools",pdf_tool_node)
+    workflow.add_node("image",image_node)
+    workflow.add_node("image_tools",image_tool_node)
 
 
     workflow.add_conditional_edges(START, route_agent,{
@@ -102,10 +125,13 @@ def build_graph():
         "coding": "coding",
         "search": "search",
         "pdf": "pdf",
+        "image": "image",
     },)
+
 
     workflow.add_edge("chat", END)
     workflow.add_edge("coding", END)
+
     workflow.add_conditional_edges("search",route_search_tools,{
         "tools":"search_tools",
         "end":END,
@@ -117,6 +143,12 @@ def build_graph():
         "end":END,
     })
     workflow.add_edge("pdf_tools", "pdf")
+
+    workflow.add_conditional_edges("image",route_image_tools,{
+        "tools": "image_tools",
+        "end": END,
+    },)
+    workflow.add_edge("image_tools", "image")
 
 
     return workflow.compile()
