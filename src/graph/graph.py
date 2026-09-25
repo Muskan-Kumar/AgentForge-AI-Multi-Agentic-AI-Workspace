@@ -12,6 +12,8 @@ from src.graph.supervisor import supervisor_select_agents
 from src.graph.final_response import final_response_node
 from src.graph.context import build_agent_messages
 
+from src.memory.long_term_memory import long_term_memory
+from src.memory.memory_extractor import extract_and_save_memories
 
 from src.graph.router import (
     route_agent, 
@@ -49,18 +51,36 @@ def extract_artifact_path(result: str) -> str:
 
 
 ##--- chat node----
-def chat_node(state: AgentState)->dict:
+def chat_node(state: AgentState) -> dict:
+
     messages = state.get("messages", [])
+    memory_context = state.get("memory_context", "")
+
+    memory_message = []
+
+    if memory_context:
+        memory_message = [
+            {
+                "role": "system",
+                "content": (
+                    "Relevant long-term user memory:\n"
+                    + memory_context
+                ),
+            }
+        ]
 
     response = chat_agent.invoke(
         {
-            "messages": messages
-            + [
-                {
-                    "role": "user",
-                    "content": state.get("user_query", ""),
-                }
-            ]
+            "messages": (
+                memory_message
+                + messages
+                + [
+                    {
+                        "role": "user",
+                        "content": state.get("user_query", ""),
+                    }
+                ]
+            )
         }
     )
 
@@ -198,6 +218,29 @@ def ppt_node(state: AgentState) -> dict:
 
 
 
+def load_long_term_memory(state: AgentState) -> dict:
+
+    user_id = state.get("thread_id")
+
+    if not user_id:
+        return {}
+
+    memories = long_term_memory.get_all_memories(user_id)
+
+    if not memories:
+        return {}
+
+    memory_context = "\n".join(
+        f"{key}: {value}"
+        for key, value in memories.items()
+    )
+
+    return {
+        "memory_context": memory_context
+    }
+
+
+
 ###-----multi agent prepare node-----
 def prepare_agent_execution(state: AgentState) -> dict:
     agent_mode = state.get("agent_mode", "chat")
@@ -226,6 +269,21 @@ def next_agent_node(state: AgentState) -> dict:
     return {}
 
 
+def save_long_term_memory(state: AgentState) -> dict:
+
+    user_id = state.get("thread_id")
+    user_query = state.get("user_query", "")
+
+    if not user_id or not user_query:
+        return {}
+
+    extract_and_save_memories(
+        user_id=user_id,
+        conversation=user_query,
+    )
+
+    return {}
+
 
 
 ## --- graph build ----
@@ -234,8 +292,10 @@ def build_graph(checkpointer):
 
     ##--core node--
     workflow.add_node("prepare_execution",prepare_agent_execution)
+    workflow.add_node("load_memory", load_long_term_memory)
     workflow.add_node("next_agent",next_agent_node)
     workflow.add_node("final_response", final_response_node)
+    workflow.add_node("save_memory", save_long_term_memory)
 
 
     ##--agent node---
@@ -254,7 +314,8 @@ def build_graph(checkpointer):
     workflow.add_node("ppt_tools",ppt_tool_node)
 
     ##--start--
-    workflow.add_edge(START, "prepare_execution")
+    workflow.add_edge(START, "load_memory")
+    workflow.add_edge("load_memory", "prepare_execution")
 
      #--Initial agent routing--
     workflow.add_conditional_edges("prepare_execution", route_agent,{
@@ -322,8 +383,8 @@ def build_graph(checkpointer):
         "end": "final_response",
     })
 
-    workflow.add_edge("final_response",END)  ## final response
-
+    workflow.add_edge("final_response", "save_memory")
+    workflow.add_edge("save_memory", END)
 
     return workflow.compile(
     checkpointer=checkpointer

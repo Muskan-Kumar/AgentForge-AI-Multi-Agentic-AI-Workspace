@@ -23,6 +23,7 @@ dependencies = [
     "pillow>=12.3.0",
     "pinecone>=7.3.0",
     "psycopg-pool>=3.3.3",
+    "psycopg2-binary>=2.9.13",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.13.5",
     "pymupdf>=1.28.2",

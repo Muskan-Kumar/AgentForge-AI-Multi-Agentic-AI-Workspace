@@ -7,6 +7,7 @@ class AgentState(TypedDict, total=False):
 
     user_query: str
     thread_id:str
+    memory_context: str
 
     agent_mode: str
     selected_agents: list[str]
