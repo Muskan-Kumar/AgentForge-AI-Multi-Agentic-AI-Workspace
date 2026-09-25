@@ -170,3 +170,23 @@ def route_next_agent(state: AgentState) -> str:
         return "end"
 
     return selected_agents[next_index]
+
+
+# def route_next_agent(state: AgentState) -> str:
+#     selected_agents = state.get("selected_agents", [])
+#     current_index = state.get("current_agent_index", 0)
+
+#     print("\n========== ROUTE NEXT AGENT ==========")
+#     print("Selected Agents:", selected_agents)
+#     print("Current Index:", current_index)
+
+#     if current_index >= len(selected_agents):
+#         print("NEXT ROUTE: end")
+#         return "end"
+
+#     next_agent = selected_agents[current_index]
+
+#     print("NEXT ROUTE:", next_agent)
+#     print("======================================\n")
+
+#     return next_agent

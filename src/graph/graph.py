@@ -8,6 +8,8 @@ from src.agents.image_agent import image_agent
 from src.agents.ppt_agent import ppt_agent
 
 from src.graph.supervisor import supervisor_select_agents
+from src.graph.final_response import final_response_node
+from src.graph.context import build_agent_messages
 
 from src.graph.router import (
     route_agent, 
@@ -36,17 +38,16 @@ from src.state.agent_state import AgentState
 def chat_node(state: AgentState)->dict:
     response = chat_agent.invoke(
         {
-            "input": state["user_query"]
+            "input": state.get("user_query", "")
         }
     )
 
     return {
         "messages": [response],
         "chat_result": response.content,
-        "final_response": response.content,
-        "current_agent_index": state.get(
+        "current_agent_index": (state.get(
             "current_agent_index",0
-        ) + 1,
+        ) + 1),
     }
 
 
@@ -54,7 +55,7 @@ def chat_node(state: AgentState)->dict:
 def coding_node(state: AgentState)-> dict:
     response = coding_agent.invoke(
         {
-            "messages": state.get("messages",[])
+            "messages": build_agent_messages(state, "coding")
         }
     )
 
@@ -64,7 +65,6 @@ def coding_node(state: AgentState)-> dict:
 
     if not response.tool_calls:
         result["coding_result"] = response.content
-        result["final_response"] = response.content
         result["current_agent_index"] = (
             state.get("current_agent_index", 0) + 1
         )
@@ -77,7 +77,7 @@ def coding_node(state: AgentState)-> dict:
 def search_node(state: AgentState)->dict:
     response = search_agent.invoke(
         {
-            "messages": state.get("messages",[])
+            "messages": build_agent_messages(state, "search")
         }
     )
 
@@ -87,7 +87,6 @@ def search_node(state: AgentState)->dict:
 
     if not response.tool_calls:
         result["search_results"] = response.content
-        result["final_response"] = response.content
         result["current_agent_index"] = (
             state.get("current_agent_index", 0) + 1
         )
@@ -99,7 +98,7 @@ def search_node(state: AgentState)->dict:
 def pdf_node(state: AgentState)->dict:
     response = pdf_agent.invoke(
         {
-            "messages": state.get("messages", [])
+            "messages": build_agent_messages(state, "pdf")
         }
     )
 
@@ -109,7 +108,6 @@ def pdf_node(state: AgentState)->dict:
 
     if not response.tool_calls:
         result["pdf_context"] = response.content
-        result["final_response"] = response.content
         result["current_agent_index"] = (
             state.get("current_agent_index", 0) + 1
         )
@@ -122,7 +120,7 @@ def pdf_node(state: AgentState)->dict:
 def image_node(state: AgentState)->dict:
     response = image_agent.invoke(
         {
-            "messages": state.get("messages",[])
+            "messages": build_agent_messages(state, "image")
         }
     )
 
@@ -132,7 +130,6 @@ def image_node(state: AgentState)->dict:
 
     if not response.tool_calls:
         result["image_file"] = response.content
-        result["final_response"] = response.content
         result["current_agent_index"] = (
             state.get("current_agent_index", 0) + 1
         )
@@ -144,7 +141,7 @@ def image_node(state: AgentState)->dict:
 def ppt_node(state: AgentState)->dict:
     response = ppt_agent.invoke(
         {
-            "messages": state.get("messages",[])
+            "messages": build_agent_messages(state, "ppt")
         }
     )
 
@@ -154,7 +151,7 @@ def ppt_node(state: AgentState)->dict:
 
     if not response.tool_calls:
         result["ppt_result"] = response.content
-        result["final_response"] = response.content
+        result["ppt_file"] = response.content
         result["current_agent_index"] = (
             state.get("current_agent_index", 0) + 1
         )
@@ -186,42 +183,39 @@ def prepare_agent_execution(state: AgentState) -> dict:
     }
 
 
-##--- helper function for increment current agnt index
-def advance_agent(state: AgentState) -> dict:
-    return {
-        "current_agent_index": state.get(
-            "current_agent_index",
-            0
-        ) + 1
-    }
+##--- next agent node(dusre agent ko access krne ke liye. ex-> search agento -> ppt agent)
+def next_agent_node(state: AgentState) -> dict:
+    return {}
 
 
 ## --- graph build ----
 def build_graph():
     workflow = StateGraph(AgentState)
 
+    ##--core node--
     workflow.add_node("prepare_execution",prepare_agent_execution)
+    workflow.add_node("next_agent",next_agent_node)
+    workflow.add_node("final_response", final_response_node)
 
+    ##--agent node---
     workflow.add_node("chat", chat_node)
-
     workflow.add_node("coding", coding_node)
-    workflow.add_node("coding_tools", coding_tool_node)
-
     workflow.add_node("search", search_node)
-    workflow.add_node("search_tools",search_tool_node)
-
     workflow.add_node("pdf",pdf_node)
-    workflow.add_node("pdf_tools",pdf_tool_node)
-
     workflow.add_node("image",image_node)
-    workflow.add_node("image_tools",image_tool_node)
-
     workflow.add_node("ppt",ppt_node)
+
+    ##--tool node--
+    workflow.add_node("coding_tools", coding_tool_node)
+    workflow.add_node("search_tools",search_tool_node)
+    workflow.add_node("pdf_tools",pdf_tool_node)
+    workflow.add_node("image_tools",image_tool_node)
     workflow.add_node("ppt_tools",ppt_tool_node)
 
-
+    ##--start--
     workflow.add_edge(START, "prepare_execution")
 
+     #--Initial agent routing--
     workflow.add_conditional_edges("prepare_execution", route_agent,{
         "chat": "chat",
         "coding": "coding",
@@ -231,45 +225,63 @@ def build_graph():
         "ppt":"ppt",
     },)
 
-
+    ##--chat--
     workflow.add_conditional_edges("chat", route_next_agent,{
         "coding": "coding",
         "search": "search",
         "pdf": "pdf",
         "image": "image",
         "ppt": "ppt",
-        "end": END,
+        "end": "final_response",
     },)
 
+    ##--codding--
     workflow.add_conditional_edges("coding",route_coding_tools,{
         "tools":"coding_tools",
-        "end":END,
+        "end":"next_agent",
     })
     workflow.add_edge("coding_tools", "coding")
 
+    ##--search--
     workflow.add_conditional_edges("search",route_search_tools,{
         "tools":"search_tools",
-        "end":END,
+        "end":"next_agent",
     })
     workflow.add_edge("search_tools", "search")
-    
+
+    #---pdf---
     workflow.add_conditional_edges("pdf",route_pdf_tools,{
         "tools":"pdf_tools",
-        "end":END,
+        "end":"next_agent",
     })
     workflow.add_edge("pdf_tools", "pdf")
 
+    ##--image---
     workflow.add_conditional_edges("image",route_image_tools,{
         "tools": "image_tools",
-        "end": END,
+        "end": "next_agent",
     },)
     workflow.add_edge("image_tools", "image")
 
+    ##---ppt---
     workflow.add_conditional_edges("ppt",route_ppt_tools,{
         "tools": "ppt_tools",
-        "end": END,
+        "end": "next_agent",
     },)
     workflow.add_edge("ppt_tools", "ppt")
+
+    ##--next agent routing---
+    workflow.add_conditional_edges("next_agent",route_next_agent,{
+        "chat": "chat",
+        "coding": "coding",
+        "search": "search",
+        "pdf": "pdf",
+        "image": "image",
+        "ppt": "ppt",
+        "end": "final_response",
+    })
+
+    workflow.add_edge("final_response",END)  ## final response
 
 
     return workflow.compile()
