@@ -13,6 +13,7 @@ from src.graph.router import (
     route_pdf_tools,
     route_image_tools,
     route_ppt_tools,
+    route_coding_tools,
 )
 
 from src.graph.tool_nodes import (
@@ -20,6 +21,7 @@ from src.graph.tool_nodes import (
     pdf_tool_node,
     image_tool_node,
     ppt_tool_node,
+    coding_tool_node,
 )
 
 from src.state.agent_state import AgentState
@@ -46,15 +48,19 @@ def chat_node(state: AgentState)->dict:
 def coding_node(state: AgentState)-> dict:
     response = coding_agent.invoke(
         {
-            "input": state["user_query"]
+            "messages": state.get("messages",[])
         }
     )
 
-    return {
-        "messages":[response],
-        "coding_result":response.content,
-        "final_response":response.content,
+    result = {
+        "messages": [response]
     }
+
+    if not response.tool_calls:
+        result["coding_result"] = response.content
+        result["final_response"] = response.content
+
+    return result
 
 
 
@@ -142,6 +148,7 @@ def build_graph():
 
     workflow.add_node("chat", chat_node)
     workflow.add_node("coding", coding_node)
+    workflow.add_node("coding_tools", coding_tool_node)
     workflow.add_node("search", search_node)
     workflow.add_node("search_tools",search_tool_node)
     workflow.add_node("pdf",pdf_node)
@@ -163,7 +170,12 @@ def build_graph():
 
 
     workflow.add_edge("chat", END)
-    workflow.add_edge("coding", END)
+
+    workflow.add_conditional_edges("coding",route_coding_tools,{
+        "tools":"coding_tools",
+        "end":END,
+    })
+    workflow.add_edge("coding_tools", "coding")
 
     workflow.add_conditional_edges("search",route_search_tools,{
         "tools":"search_tools",

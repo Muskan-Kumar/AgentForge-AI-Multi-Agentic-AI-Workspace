@@ -121,3 +121,17 @@ def route_ppt_tools(state: AgentState)->str:
         return "tools"
 
     return "end"
+
+
+def route_coding_tools(state: AgentState) -> str:
+    messages = state.get("messages", [])
+
+    if not messages:
+        return "end"
+
+    last_message = messages[-1]
+
+    if isinstance(last_message, AIMessage) and last_message.tool_calls:
+        return "tools"
+
+    return "end"

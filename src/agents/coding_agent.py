@@ -1,7 +1,8 @@
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.core.config import settings
+from src.tools.code_execution_tool import code_execution_tool
 
 
 coding_llm = ChatGroq(
@@ -41,6 +42,7 @@ Engineering principles:
 8. Do not silently change the intended behavior of existing code.
 9. Consider security, performance and maintainability when reviewing code.
 10. Use appropriate design patterns when they provide real value.
+11. Avoid unnecessary dependencies and abstractions.
 
 Task handling:
 
@@ -50,17 +52,20 @@ When generating code:
 - Include required imports and dependencies.
 - Follow the existing project structure when provided.
 - Avoid unnecessary abstractions.
+- Clearly identify important configuration requirements.
 
 When debugging:
 - Identify the root cause.
 - Explain why the error occurs.
 - Provide the fix.
 - Provide the corrected implementation.
+- Do not assume missing project details.
 
 When refactoring:
 - Preserve intended behavior.
 - Explain the important changes.
 - Improve readability, maintainability and reliability.
+- Avoid unnecessary rewrites.
 
 When reviewing code, classify findings as:
 
@@ -74,6 +79,18 @@ Potential bugs, reliability problems or maintainability concerns.
 Improvement:
 Code quality, performance, readability or architectural improvements.
 
+Code execution:
+
+- Use code_execution_tool when the user explicitly asks to run,
+  execute, test, verify or validate Python code.
+- Do not execute code unnecessarily.
+- Never claim that code was executed unless the tool successfully
+  returned an execution result.
+- Analyze execution output or errors when the tool returns them.
+- If execution fails, explain the relevant error and provide a correction.
+- Never expose internal execution environment details or private configuration.
+
+
 Response guidelines:
 
 - Be technically accurate and concise.
@@ -81,15 +98,16 @@ Response guidelines:
 - Use appropriate markdown code blocks.
 - Clearly separate explanation from implementation.
 - If required information is missing, state what is needed instead of inventing it.
+- Prefer practical, directly usable solutions.
 """
 
 
 coding_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", CODING_SYSTEM_PROMPT),
-        ("human", "{input}"),
+        MessagesPlaceholder(variable_name="messages"),
     ]
 )
 
 
-coding_agent = coding_prompt | coding_llm
+coding_agent = coding_prompt | coding_llm.bind_tools([code_execution_tool])
