@@ -1,4 +1,5 @@
 from langgraph.graph import START, END, StateGraph
+from langchain_core.messages import ToolMessage
 
 from src.agents.chat_agent import chat_agent
 from src.agents.coding_agent import coding_agent
@@ -10,6 +11,7 @@ from src.agents.ppt_agent import ppt_agent
 from src.graph.supervisor import supervisor_select_agents
 from src.graph.final_response import final_response_node
 from src.graph.context import build_agent_messages
+
 
 from src.graph.router import (
     route_agent, 
@@ -33,21 +35,41 @@ from src.state.agent_state import AgentState
 
 
 
+def extract_artifact_path(result: str) -> str:
+    if not result:
+        return ""
+
+    for line in result.splitlines():
+        line = line.strip()
+
+        if line.startswith("File:"):
+            return line.replace("File:", "", 1).strip()
+
+    return ""
+
 
 ##--- chat node----
 def chat_node(state: AgentState)->dict:
+    messages = state.get("messages", [])
+
     response = chat_agent.invoke(
         {
-            "input": state.get("user_query", "")
+            "messages": messages
+            + [
+                {
+                    "role": "user",
+                    "content": state.get("user_query", ""),
+                }
+            ]
         }
     )
 
     return {
         "messages": [response],
         "chat_result": response.content,
-        "current_agent_index": (state.get(
-            "current_agent_index",0
-        ) + 1),
+        "current_agent_index": (
+            state.get("current_agent_index", 0) + 1
+        ),
     }
 
 
@@ -117,46 +139,62 @@ def pdf_node(state: AgentState)->dict:
 
 
 ##----- image node-----
-def image_node(state: AgentState)->dict:
+def image_node(state: AgentState) -> dict:
+    messages = state.get("messages", [])
+
+    if messages and isinstance(messages[-1], ToolMessage):
+        image_result = messages[-1].content
+        image_file = extract_artifact_path(image_result)
+
+        return {
+            "image_file": image_file,
+            "current_agent_index": (
+                state.get("current_agent_index", 0) + 1
+            ),
+        }
+
     response = image_agent.invoke(
         {
-            "messages": build_agent_messages(state, "image")
+            "messages": build_agent_messages(
+                state,
+                "image"
+            )
         }
     )
 
-    result = {
+    return {
         "messages": [response],
     }
-
-    if not response.tool_calls:
-        result["image_file"] = response.content
-        result["current_agent_index"] = (
-            state.get("current_agent_index", 0) + 1
-        )
-
-    return result
 
 
 ##-----ppt node----
-def ppt_node(state: AgentState)->dict:
+def ppt_node(state: AgentState) -> dict:
+    messages = state.get("messages", [])
+
+    if messages and isinstance(messages[-1], ToolMessage):
+        ppt_result = messages[-1].content
+        ppt_file = extract_artifact_path(ppt_result)
+
+        return {
+            "ppt_result": ppt_result,
+            "ppt_file": ppt_file,
+            "current_agent_index": (
+                state.get("current_agent_index", 0) + 1
+            ),
+        }
+
     response = ppt_agent.invoke(
         {
-            "messages": build_agent_messages(state, "ppt")
+            "messages": build_agent_messages(
+                state,
+                "ppt"
+            )
         }
     )
 
-    result = {
+    return {
         "messages": [response],
     }
-
-    if not response.tool_calls:
-        result["ppt_result"] = response.content
-        result["ppt_file"] = response.content
-        result["current_agent_index"] = (
-            state.get("current_agent_index", 0) + 1
-        )
-
-    return result
 
 
 
@@ -188,14 +226,17 @@ def next_agent_node(state: AgentState) -> dict:
     return {}
 
 
+
+
 ## --- graph build ----
-def build_graph():
+def build_graph(checkpointer):
     workflow = StateGraph(AgentState)
 
     ##--core node--
     workflow.add_node("prepare_execution",prepare_agent_execution)
     workflow.add_node("next_agent",next_agent_node)
     workflow.add_node("final_response", final_response_node)
+
 
     ##--agent node---
     workflow.add_node("chat", chat_node)
@@ -284,8 +325,9 @@ def build_graph():
     workflow.add_edge("final_response",END)  ## final response
 
 
-    return workflow.compile()
+    return workflow.compile(
+    checkpointer=checkpointer
+)
 
 
 
-agentforge_graph = build_graph()

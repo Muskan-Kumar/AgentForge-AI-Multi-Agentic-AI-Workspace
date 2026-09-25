@@ -1,5 +1,5 @@
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from src.core.config import settings
 
@@ -42,7 +42,7 @@ Response guidelines:
 chat_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", CHAT_SYSTEM_PROMPT),
-        ("human", "{input}"),
+        MessagesPlaceholder(variable_name="messages")
     ]
 )
 
