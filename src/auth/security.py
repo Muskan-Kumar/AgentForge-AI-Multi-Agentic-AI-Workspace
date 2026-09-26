@@ -41,11 +41,27 @@ def create_access_token(
     )
 
 
-def decode_access_token(token: str) -> dict:
-    return jwt.decode(
-        token,
+def create_access_token(
+    user_id: str,
+    email: str,
+    token_version: int,
+) -> str:
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "token_version": token_version,
+        "exp": expire,
+    }
+
+    return jwt.encode(
+        payload,
         settings.JWT_SECRET_KEY,
-        algorithms=[settings.JWT_ALGORITHM],
+        algorithm=settings.JWT_ALGORITHM,
     )
 
 

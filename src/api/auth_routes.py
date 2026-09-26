@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr, Field
 from src.auth.dependencies import get_current_user
+from src.auth.email_service import send_password_reset_email
 
 from src.auth.security import (
     create_access_token,
@@ -13,6 +14,7 @@ from src.auth.user_service import (
     update_password,
     create_password_reset_request,
     reset_password,
+    increment_token_version,
 )
 
 
@@ -117,6 +119,7 @@ def login(request: LoginRequest):
     access_token = create_access_token(
         user_id=user.user_id,
         email=user.email,
+        token_version=user.token_version,
     )
 
     return {
@@ -170,6 +173,10 @@ def change_password(
         new_password=request.new_password,
     )
 
+    increment_token_version(
+        user_id=current_user["user_id"]
+    )
+
     return {
         "message": "Password changed successfully"
     }
@@ -183,14 +190,18 @@ def forgot_password(
         email=request.email
     )
 
+    if token:
+        send_password_reset_email(
+            email=request.email,
+            reset_token=token,
+        )
+
     return {
         "message": (
             "If an account exists for this email, "
-            "a password reset link has been generated."
-        ),
-        "reset_token": token,
+            "a password reset link has been sent."
+        )
     }
-
 
 @router.post("/reset-password")
 def reset_password_route(

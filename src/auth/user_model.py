@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, String, Integer
 from sqlalchemy.orm import declarative_base
 
 
@@ -33,6 +33,12 @@ class User(UserBase):
     password_reset_expires_at = Column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+    token_version = Column(
+        Integer,
+        nullable=False,
+        default=0,
     )
 
     created_at = Column(

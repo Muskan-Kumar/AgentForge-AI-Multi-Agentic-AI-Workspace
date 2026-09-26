@@ -4,7 +4,6 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from src.auth.user_model import User, UserBase
-from src.auth.security import hash_password
 from src.core.config import settings
 
 from datetime import datetime, timedelta, timezone
@@ -149,7 +148,46 @@ def reset_password(
         user.password_reset_token_hash = None
         user.password_reset_expires_at = None
 
+        user.token_version += 1
+
         session.commit()
 
         return True
+
+
+
+def increment_token_version(
+    user_id: str,
+) -> bool:
+
+    with SessionLocal() as session:
+
+        user = session.scalar(
+            select(User).where(
+                User.user_id == user_id
+            )
+        )
+
+        if not user:
+            return False
+
+        user.token_version += 1
+
+        session.commit()
+
+        return True
+
+
+
+def get_user_by_id(
+    user_id: str,
+) -> User | None:
+
+    with SessionLocal() as session:
+
+        return session.scalar(
+            select(User).where(
+                User.user_id == user_id
+            )
+        )
     
