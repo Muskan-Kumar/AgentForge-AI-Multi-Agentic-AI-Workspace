@@ -34,6 +34,10 @@ from src.graph.tool_nodes import (
 )
 
 from src.state.agent_state import AgentState
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 
 
@@ -71,10 +75,9 @@ def extract_artifact_path(result: str) -> str:
 #     }
 
 def chat_node(state: AgentState) -> dict:
-    user_query = state.get(
-        "user_query",
-        "",
-    )
+    logger.info("Chat agent started")
+
+    user_query = state.get("user_query", "")
 
     response = chat_agent.invoke(
         {
@@ -84,6 +87,8 @@ def chat_node(state: AgentState) -> dict:
             )
         }
     )
+
+    logger.info("Chat agent completed")
 
     agents_executed = list(
         state.get(
@@ -117,11 +122,15 @@ def chat_node(state: AgentState) -> dict:
 
 ##---coding node-----
 def coding_node(state: AgentState)-> dict:
+    logger.info("Coding agent started")
+
     response = coding_agent.invoke(
         {
             "messages": build_agent_messages(state, "coding")
         }
     )
+
+    logger.info("Coding agent completed")
 
     agents_executed = list(
         state.get(
@@ -151,11 +160,15 @@ def coding_node(state: AgentState)-> dict:
 
 ##---search node----
 def search_node(state: AgentState)->dict:
+    logger.info("Search agent started")
+
     response = search_agent.invoke(
         {
             "messages": build_agent_messages(state, "search")
         }
     )
+
+    logger.info("Search agent completed")
 
     agents_executed = list(
         state.get(
@@ -185,11 +198,15 @@ def search_node(state: AgentState)->dict:
 
 ##---pdf node----
 def pdf_node(state: AgentState)->dict:
+    logger.info("Pdf agent started")
+
     response = pdf_agent.invoke(
         {
             "messages": build_agent_messages(state, "pdf")
         }
     )
+
+    logger.info("Pdf agent completed")
 
     agents_executed = list(
         state.get(
@@ -225,6 +242,10 @@ def image_node(state: AgentState) -> dict:
         image_result = messages[-1].content
         image_file = extract_artifact_path(image_result)
 
+
+        logger.info("Image agent completed | file=%s",image_file,)
+
+
         agents_executed = list(
             state.get(
                 "agents_executed",
@@ -241,6 +262,8 @@ def image_node(state: AgentState) -> dict:
             ),
         }
 
+    logger.info("Image agent started")
+
     response = image_agent.invoke(
         {
             "messages": build_agent_messages(
@@ -249,6 +272,7 @@ def image_node(state: AgentState) -> dict:
             )
         }
     )
+
 
     agents_executed = list(
         state.get(
@@ -275,6 +299,9 @@ def ppt_node(state: AgentState) -> dict:
         ppt_result = messages[-1].content
         ppt_file = extract_artifact_path(ppt_result)
 
+
+        logger.info("PPT agent completed | file=%s",ppt_file,)
+
         agents_executed = list(
             state.get(
                 "agents_executed",
@@ -292,6 +319,8 @@ def ppt_node(state: AgentState) -> dict:
             ),
         }
 
+    logger.info("PPT agent started")
+
     response = ppt_agent.invoke(
         {
             "messages": build_agent_messages(
@@ -300,6 +329,7 @@ def ppt_node(state: AgentState) -> dict:
             )
         }
     )
+
 
     agents_executed = list(
         state.get(
@@ -357,6 +387,12 @@ def prepare_agent_execution(state: AgentState) -> dict:
         )
     else:
         selected_agents = [agent_mode]
+
+    logger.info(
+        "Agent execution started | mode=%s | agents=%s",
+        agent_mode,
+        selected_agents,
+    )
 
     return {
         "selected_agents": selected_agents,
