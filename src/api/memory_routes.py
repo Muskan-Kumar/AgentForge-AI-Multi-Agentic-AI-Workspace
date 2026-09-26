@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from src.auth.dependencies import get_current_user
 from src.memory.long_term_memory import long_term_memory
 
 
@@ -18,9 +19,15 @@ class MemoryUpdateRequest(BaseModel):
     )
 
 
-@router.get("/{user_id}")
-def get_memories(user_id: str):
-    memories = long_term_memory.get_all_memories(user_id)
+@router.get("/")
+def get_memories(
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["user_id"]
+
+    memories = long_term_memory.get_all_memories(
+        user_id
+    )
 
     return {
         "user_id": user_id,
@@ -28,14 +35,16 @@ def get_memories(user_id: str):
     }
 
 
-@router.get("/{user_id}/{memory_key}")
+@router.get("/{memory_key}")
 def get_memory(
-    user_id: str,
     memory_key: str,
+    current_user: dict = Depends(get_current_user),
 ):
+    user_id = current_user["user_id"]
+
     value = long_term_memory.get_memory(
-        user_id,
-        memory_key,
+        user_id=user_id,
+        memory_key=memory_key,
     )
 
     if value is None:
@@ -51,12 +60,14 @@ def get_memory(
     }
 
 
-@router.put("/{user_id}/{memory_key}")
+@router.put("/{memory_key}")
 def update_memory(
-    user_id: str,
     memory_key: str,
     request: MemoryUpdateRequest,
+    current_user: dict = Depends(get_current_user),
 ):
+    user_id = current_user["user_id"]
+
     try:
         long_term_memory.update_memory(
             user_id=user_id,
@@ -78,11 +89,13 @@ def update_memory(
     }
 
 
-@router.delete("/{user_id}/{memory_key}")
+@router.delete("/{memory_key}")
 def delete_memory(
-    user_id: str,
     memory_key: str,
+    current_user: dict = Depends(get_current_user),
 ):
+    user_id = current_user["user_id"]
+
     long_term_memory.delete_memory(
         user_id=user_id,
         memory_key=memory_key,
@@ -95,9 +108,15 @@ def delete_memory(
     }
 
 
-@router.delete("/{user_id}")
-def clear_memories(user_id: str):
-    long_term_memory.clear_memories(user_id)
+@router.delete("/")
+def clear_memories(
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["user_id"]
+
+    long_term_memory.clear_memories(
+        user_id=user_id
+    )
 
     return {
         "message": "All memories cleared successfully",
