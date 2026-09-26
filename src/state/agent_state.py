@@ -12,6 +12,8 @@ class AgentState(TypedDict, total=False):
     agent_mode: str
     selected_agents: list[str]
     current_agent_index: int
+    agents_executed: list[str]
+    execution_status: str
 
     uploaded_files: list[str]
 
@@ -31,4 +33,3 @@ class AgentState(TypedDict, total=False):
     error_message: str
     error_agent: str
     retry_count: int
-    execution_status: str

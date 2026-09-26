@@ -1,5 +1,5 @@
 from langgraph.graph import START, END, StateGraph
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, HumanMessage
 
 from src.agents.chat_agent import chat_agent
 from src.agents.coding_agent import coding_agent
@@ -51,7 +51,30 @@ def extract_artifact_path(result: str) -> str:
 
 
 ##--- chat node----
+# def chat_node(state: AgentState) -> dict:
+
+#     response = chat_agent.invoke(
+#         {
+#             "messages": build_agent_messages(
+#                 state,
+#                 "chat",
+#             )
+#         }
+#     )
+
+#     return {
+#         "messages": [response],
+#         "chat_result": response.content,
+#         "current_agent_index": (
+#             state.get("current_agent_index", 0) + 1
+#         ),
+#     }
+
 def chat_node(state: AgentState) -> dict:
+    user_query = state.get(
+        "user_query",
+        "",
+    )
 
     response = chat_agent.invoke(
         {
@@ -62,13 +85,35 @@ def chat_node(state: AgentState) -> dict:
         }
     )
 
+    agents_executed = list(
+        state.get(
+            "agents_executed",
+            [],
+        )
+    )
+
+    if "chat" not in agents_executed:
+        agents_executed.append("chat")
+
     return {
-        "messages": [response],
+        "messages": [
+            HumanMessage(
+                content=user_query
+            ),
+            response,
+        ],
         "chat_result": response.content,
+        "agents_executed": agents_executed,
+        "execution_status": "running",
         "current_agent_index": (
-            state.get("current_agent_index", 0) + 1
+            state.get(
+                "current_agent_index",
+                0,
+            ) + 1
         ),
     }
+
+
 
 ##---coding node-----
 def coding_node(state: AgentState)-> dict:
@@ -78,8 +123,20 @@ def coding_node(state: AgentState)-> dict:
         }
     )
 
+    agents_executed = list(
+        state.get(
+            "agents_executed",
+            [],
+        )
+    )
+
+    if "coding" not in agents_executed:
+        agents_executed.append("coding")
+
     result = {
         "messages": [response],
+        "agents_executed": agents_executed,
+        "execution_status": "running",
     }
 
     if not response.tool_calls:
@@ -100,8 +157,21 @@ def search_node(state: AgentState)->dict:
         }
     )
 
+    agents_executed = list(
+        state.get(
+            "agents_executed",
+            [],
+        )
+    )
+
+    if "search" not in agents_executed:
+        agents_executed.append("search")
+
+
     result = {
         "messages": [response],
+        "agents_executed": agents_executed,
+        "execution_status": "running",
     }
 
     if not response.tool_calls:
@@ -121,8 +191,20 @@ def pdf_node(state: AgentState)->dict:
         }
     )
 
+    agents_executed = list(
+        state.get(
+            "agents_executed",
+            [],
+        )
+    )
+
+    if "pdf" not in agents_executed:
+        agents_executed.append("pdf")
+
     result = {
         "messages": [response],
+        "agents_executed": agents_executed,
+        "execution_status": "running",
     }
 
     if not response.tool_calls:
@@ -143,8 +225,17 @@ def image_node(state: AgentState) -> dict:
         image_result = messages[-1].content
         image_file = extract_artifact_path(image_result)
 
+        agents_executed = list(
+            state.get(
+                "agents_executed",
+                [],
+            )
+        )
+
         return {
             "image_file": image_file,
+            "agents_executed": agents_executed,
+            "execution_status": "running",
             "current_agent_index": (
                 state.get("current_agent_index", 0) + 1
             ),
@@ -159,8 +250,20 @@ def image_node(state: AgentState) -> dict:
         }
     )
 
+    agents_executed = list(
+        state.get(
+            "agents_executed",
+            [],
+        )
+    )
+
+    if "image" not in agents_executed:
+        agents_executed.append("image")
+
     return {
         "messages": [response],
+        "agents_executed": agents_executed,
+        "execution_status": "running",
     }
 
 
@@ -172,9 +275,18 @@ def ppt_node(state: AgentState) -> dict:
         ppt_result = messages[-1].content
         ppt_file = extract_artifact_path(ppt_result)
 
+        agents_executed = list(
+            state.get(
+                "agents_executed",
+                [],
+            )
+        )
+
         return {
             "ppt_result": ppt_result,
             "ppt_file": ppt_file,
+            "agents_executed": agents_executed,
+            "execution_status": "running",
             "current_agent_index": (
                 state.get("current_agent_index", 0) + 1
             ),
@@ -189,8 +301,21 @@ def ppt_node(state: AgentState) -> dict:
         }
     )
 
+    agents_executed = list(
+        state.get(
+            "agents_executed",
+            [],
+        )
+    )
+
+    if "ppt" not in agents_executed:
+        agents_executed.append("ppt")
+
+    
     return {
         "messages": [response],
+        "agents_executed": agents_executed,
+        "execution_status": "running",
     }
 
 
@@ -227,21 +352,17 @@ def prepare_agent_execution(state: AgentState) -> dict:
     agent_mode = state.get("agent_mode", "chat")
 
     if agent_mode == "auto":
-        selected_agents = state.get("selected_agents")
-
-        if not selected_agents:
-            selected_agents = supervisor_select_agents(
-                state.get("user_query", "")
-            )
-
-        return {
-            "selected_agents": selected_agents,
-            "current_agent_index": 0,
-        }
+        selected_agents = supervisor_select_agents(
+            state.get("user_query", "")
+        )
+    else:
+        selected_agents = [agent_mode]
 
     return {
-        "selected_agents": [agent_mode],
+        "selected_agents": selected_agents,
         "current_agent_index": 0,
+        "agents_executed": [],
+        "execution_status": "running",
     }
 
 

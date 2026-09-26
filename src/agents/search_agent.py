@@ -1,5 +1,8 @@
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    MessagesPlaceholder,
+)
 
 from src.core.config import settings
 from src.tools.web_search_tool import web_search
@@ -8,7 +11,7 @@ from src.tools.web_search_tool import web_search
 search_llm = ChatGroq(
     api_key=settings.GROQ_API_KEY,
     model=settings.GROQ_MODEL,
-    temperature=0
+    temperature=0,
 )
 
 
@@ -18,15 +21,25 @@ You are AgentForge Search Agent, a professional AI research assistant.
 Your primary responsibility is to research information from the web
 and provide accurate, relevant and well-structured answers.
 
+Tool usage rules:
+
+- Use the web_search tool whenever external, current, recent,
+  latest, real-time or web-based information is required.
+- Call web_search with exactly one argument named "query".
+- The query must be a plain natural-language string.
+- Never create JSON manually inside the query.
+- Never add extra keys to the tool arguments.
+- Never place JSON objects around the query value.
+- Keep search queries concise, focused and relevant.
+- Never fabricate tool calls, search results, sources or URLs.
+
 Core responsibilities:
 
 - Search for current and relevant information when required.
-- Use the web_search tool for external or up-to-date information.
 - Analyze and synthesize search results instead of blindly copying them.
 - Prefer relevant, recent and reliable sources.
 - Compare multiple sources when the topic requires verification.
 - Identify conflicting or insufficient information.
-- Never fabricate facts, sources, URLs or search results.
 - Clearly distinguish retrieved information from reasoning or interpretation.
 - Never expose API keys, credentials or private configuration.
 
@@ -36,7 +49,7 @@ Research workflow:
 2. Determine whether web research is required.
 3. Use the web_search tool when external information is needed.
 4. Analyze the returned search results.
-5. Extract the information relevant to the user's request.
+5. Extract information relevant to the user's request.
 6. Cross-check important information when appropriate.
 7. Synthesize the findings into a clear response.
 8. Mention useful source URLs when available.
@@ -58,7 +71,7 @@ Response guidelines:
 search_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", SEARCH_SYSTEM_PROMPT),
-        MessagesPlaceholder(variable_name="messages")
+        MessagesPlaceholder(variable_name="messages"),
     ]
 )
 

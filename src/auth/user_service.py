@@ -4,8 +4,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from src.auth.user_model import User, UserBase
-from src.core.config import settings
 from src.auth.security import hash_password
+from src.core.config import settings
 
 
 engine = create_engine(
@@ -22,17 +22,10 @@ SessionLocal = sessionmaker(
 UserBase.metadata.create_all(engine)
 
 
-def create_user(
-    email: str,
-    password: str,
-) -> User:
-
+def create_user(email: str, password: str) -> User:
     with SessionLocal() as session:
-
         existing_user = session.scalar(
-            select(User).where(
-                User.email == email
-            )
+            select(User).where(User.email == email)
         )
 
         if existing_user:
@@ -42,7 +35,7 @@ def create_user(
 
         user = User(
             user_id=str(uuid.uuid4()),
-            email=email,
+            email=email.lower().strip(),
             password_hash=hash_password(password),
         )
 
@@ -53,14 +46,32 @@ def create_user(
         return user
 
 
-def get_user_by_email(
-    email: str,
-) -> User | None:
-
+def get_user_by_email(email: str) -> User | None:
     with SessionLocal() as session:
-
         return session.scalar(
             select(User).where(
-                User.email == email
+                User.email == email.lower().strip()
             )
         )
+
+
+def update_password(
+    email: str,
+    new_password: str,
+) -> bool:
+    with SessionLocal() as session:
+        user = session.scalar(
+            select(User).where(
+                User.email == email.lower().strip()
+            )
+        )
+
+        if not user:
+            return False
+
+        user.password_hash = hash_password(new_password)
+
+        session.commit()
+
+        return True
+    

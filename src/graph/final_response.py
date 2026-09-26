@@ -110,5 +110,6 @@ def final_response_node(state: AgentState) -> dict:
     )
 
     return {
-        "final_response": result.content
+        "final_response": result.content,
+        "execution_status": "completed",
     }
