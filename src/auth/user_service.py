@@ -7,6 +7,14 @@ from src.auth.user_model import User, UserBase
 from src.auth.security import hash_password
 from src.core.config import settings
 
+from datetime import datetime, timedelta, timezone
+
+from src.auth.security import (
+    hash_password,
+    create_password_reset_token,
+    hash_reset_token,
+)
+
 
 engine = create_engine(
     settings.POSTGRES_URL,
@@ -70,6 +78,76 @@ def update_password(
             return False
 
         user.password_hash = hash_password(new_password)
+
+        session.commit()
+
+        return True
+
+
+
+def create_password_reset_request(
+    email: str,
+) -> str | None:
+
+    with SessionLocal() as session:
+
+        user = session.scalar(
+            select(User).where(
+                User.email == email.lower().strip()
+            )
+        )
+
+        if not user:
+            return None
+
+        raw_token, token_hash = (
+            create_password_reset_token()
+        )
+
+        user.password_reset_token_hash = token_hash
+
+        user.password_reset_expires_at = (
+            datetime.now(timezone.utc)
+            + timedelta(minutes=15)
+        )
+
+        session.commit()
+
+        return raw_token
+
+
+def reset_password(
+    token: str,
+    new_password: str,
+) -> bool:
+
+    token_hash = hash_reset_token(token)
+
+    with SessionLocal() as session:
+
+        user = session.scalar(
+            select(User).where(
+                User.password_reset_token_hash == token_hash
+            )
+        )
+
+        if not user:
+            return False
+
+        if not user.password_reset_expires_at:
+            return False
+
+        expires_at = user.password_reset_expires_at
+
+        if expires_at <= datetime.now(timezone.utc):
+            return False
+
+        user.password_hash = hash_password(
+            new_password
+        )
+
+        user.password_reset_token_hash = None
+        user.password_reset_expires_at = None
 
         session.commit()
 

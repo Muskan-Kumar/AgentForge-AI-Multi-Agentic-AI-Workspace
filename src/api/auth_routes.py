@@ -10,8 +10,12 @@ from src.auth.security import (
 from src.auth.user_service import (
     create_user,
     get_user_by_email,
-    update_password
+    update_password,
+    create_password_reset_request,
+    reset_password,
 )
+
+
 
 
 router = APIRouter(
@@ -45,6 +49,19 @@ class ChangePasswordRequest(BaseModel):
         max_length=128,
     )
 
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+    )
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=20)
     new_password: str = Field(
         ...,
         min_length=8,
@@ -155,4 +172,41 @@ def change_password(
 
     return {
         "message": "Password changed successfully"
+    }
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    request: ForgotPasswordRequest,
+):
+    token = create_password_reset_request(
+        email=request.email
+    )
+
+    return {
+        "message": (
+            "If an account exists for this email, "
+            "a password reset link has been generated."
+        ),
+        "reset_token": token,
+    }
+
+
+@router.post("/reset-password")
+def reset_password_route(
+    request: ResetPasswordRequest,
+):
+    success = reset_password(
+        token=request.token,
+        new_password=request.new_password,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+
+    return {
+        "message": "Password reset successfully"
     }
