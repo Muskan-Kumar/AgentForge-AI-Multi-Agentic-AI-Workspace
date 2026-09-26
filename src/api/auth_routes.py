@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr, Field
 from src.auth.dependencies import get_current_user
 from src.auth.email_service import send_password_reset_email
+from src.core.rate_limiter import RateLimiter
 
 from src.auth.security import (
     create_access_token,
@@ -23,6 +24,22 @@ from src.auth.user_service import (
 router = APIRouter(
     prefix="/api/auth",
     tags=["Authentication"],
+)
+
+
+login_limiter = RateLimiter(
+    max_requests=5,
+    window_seconds=300,
+)
+
+forgot_password_limiter = RateLimiter(
+    max_requests=3,
+    window_seconds=900,
+)
+
+reset_password_limiter = RateLimiter(
+    max_requests=5,
+    window_seconds=900,
 )
 
 
@@ -94,8 +111,18 @@ def register(request: RegisterRequest):
     }
 
 
+
+
 @router.post("/login")
 def login(request: LoginRequest):
+
+    client_key = request.email.lower().strip()
+
+    if not login_limiter.is_allowed(client_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many login attempts. Please try again later.",
+        )
 
     user = get_user_by_email(
         request.email
@@ -182,10 +209,22 @@ def change_password(
     }
 
 
+
+
+
 @router.post("/forgot-password")
 def forgot_password(
     request: ForgotPasswordRequest,
 ):
+
+    client_key = request.email.lower().strip()
+
+    if not forgot_password_limiter.is_allowed(client_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password reset requests. Please try again later.",
+        )
+    
     token = create_password_reset_request(
         email=request.email
     )
@@ -203,10 +242,22 @@ def forgot_password(
         )
     }
 
+
+
+
 @router.post("/reset-password")
 def reset_password_route(
     request: ResetPasswordRequest,
 ):
+
+    client_key = request.token
+
+    if not reset_password_limiter.is_allowed(client_key):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many reset attempts. Please try again later.",
+        )
+
     success = reset_password(
         token=request.token,
         new_password=request.new_password,
