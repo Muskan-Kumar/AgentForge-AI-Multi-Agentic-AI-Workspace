@@ -4,6 +4,7 @@ from src.api.auth_routes import router as auth_router
 from src.api.memory_routes import router as memory_router
 from src.api.chat_routes import router as chat_router
 from src.api.conversation_routes import router as conversation_router
+from src.api.middleware import RequestIDMiddleware
 
 from src.api.error_handlers import (
     agentforge_exception_handler,
@@ -20,6 +21,10 @@ app = FastAPI(
     title="AgentForge AI",
     description="Multi-Agentic AI Workspace API",
     version="1.0.0",
+)
+
+app.add_middleware(
+    RequestIDMiddleware
 )
 
 
