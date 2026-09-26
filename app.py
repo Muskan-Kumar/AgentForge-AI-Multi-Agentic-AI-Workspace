@@ -1,4 +1,8 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from src.api.security_middleware import SecurityHeadersMiddleware
 
 from src.api.auth_routes import router as auth_router
 from src.api.memory_routes import router as memory_router
@@ -25,6 +29,25 @@ app = FastAPI(
 
 app.add_middleware(
     RequestIDMiddleware
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        "localhost",
+        "127.0.0.1",
+    ],
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[   ### production me frontend url se change krna h
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 
